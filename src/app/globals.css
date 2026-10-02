@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: 248 250 252;
+    --surface: 255 255 255;
+    --surface-2: 241 245 249;
+    --ink: 15 23 42;
+    --muted: 100 116 139;
+    --line: 226 232 240;
+    --brand: 14 165 233;
+    --brand-ink: 255 255 255;
+    color-scheme: light;
+  }
+  .dark {
+    --bg: 8 13 22;
+    --surface: 14 21 33;
+    --surface-2: 21 30 45;
+    --ink: 226 232 240;
+    --muted: 148 163 184;
+    --line: 36 48 66;
+    --brand: 56 189 248;
+    --brand-ink: 3 20 36;
+    color-scheme: dark;
+  }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { @apply bg-bg text-ink font-sans antialiased; }
+  ::selection { background: rgb(56 189 248 / 0.3); }
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
+  input, textarea, select { font-size: 16px; } /* prevents iOS zoom */
+  @media (min-width: 768px) { input, textarea, select { font-size: 14px; } }
+}
+
+@layer components {
+  .card { @apply bg-surface border border-line rounded-xl shadow-[0_1px_2px_rgb(15_23_42/0.04)]; }
+  .input {
+    @apply w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-ink placeholder:text-muted/70
+      outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20;
+  }
+  .label { @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted; }
+  .glass { @apply bg-surface/75 backdrop-blur-xl; }
+  .grid-bg {
+    background-image: linear-gradient(rgb(var(--line) / .6) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--line) / .6) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .text-gradient { @apply text-sky-600 dark:text-sky-400; }
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@layer utilities {
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+:root {
+  --font-sans: "Plus Jakarta Sans Variable";
+  --font-display: "Sora";
+  --font-sig: "Dancing Script";
+  --font-sig2: "Great Vibes";
+  --font-sig3: "Caveat";
+  --font-sig4: "Homemade Apple";
+}
