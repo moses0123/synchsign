@@ -52,7 +52,7 @@ export function Field({ label, hint, children, className }: { label: string; hin
 }
 
 export interface AdminSettings {
-  email: { enabled: boolean; host: string; port: number; security: "ssl" | "starttls" | "none"; user: string; hasPassword: boolean; fromName: string; fromEmail: string; replyTo: string; provider: string };
+  email: { enabled: boolean; host: string; port: number; security: "ssl" | "starttls" | "none"; user: string; hasPassword: boolean; passwordUnreadable?: boolean; fromName: string; fromEmail: string; replyTo: string; provider: string };
   notifications: { invite: boolean; reminder: boolean; signerDone: boolean; completed: boolean; declined: boolean; voided: boolean };
   signing: { defaultReminderDays: number | null; defaultExpiryDays: number | null; maxUploadMB: number; allowDecline: boolean; consentText: string };
   access: { registration: "open" | "domains" | "closed"; allowedDomains: string[] };

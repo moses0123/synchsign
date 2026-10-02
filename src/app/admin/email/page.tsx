@@ -40,9 +40,9 @@ export default function EmailSettings() {
   const KEYS = ["enabled", "host", "port", "security", "user", "fromName", "fromEmail", "replyTo", "provider"] as const;
   const dirty = KEYS.some((k) => d[k] !== settings.email[k]) || Boolean(d.password);
 
-  async function saveEmail(extra: Partial<{ clearPassword: boolean; enabled: boolean }> = {}) {
-    const { hasPassword: _h, password, ...rest } = d!; void _h;
-    const ok = await save({ email: { ...rest, ...(password ? { password } : {}), ...extra } }, extra.clearPassword ? "Saved password removed" : "Email settings saved");
+  async function saveEmail(extra: Partial<{ clearPassword: boolean; enabled: boolean }> = {}, msg?: string) {
+    const { hasPassword: _h, passwordUnreadable: _u, password, ...rest } = d!; void _h; void _u;
+    const ok = await save({ email: { ...rest, ...(password ? { password } : {}), ...extra } }, msg ?? (extra.clearPassword ? "Saved password removed" : "Email settings saved"));
     if (ok) setD((x) => (x ? { ...x, password: "" } : x));
   }
   async function test() {
@@ -54,8 +54,11 @@ export default function EmailSettings() {
     setTesting(false);
   }
 
-  const status = settings.email.enabled && settings.email.host
+  const status = settings.email.passwordUnreadable
+    ? { tone: "warn", text: "Re-enter your SMTP password", sub: "The saved password can't be read on this server because AUTH_SECRET is different from where it was saved. Emails will fail until you type the password again and save." }
+    : settings.email.enabled && settings.email.host
     ? { tone: "ok", text: `Sending through ${settings.email.host}:${settings.email.port}`, sub: `From ${settings.email.fromName || "SyncSign"} <${settings.email.fromEmail || settings.email.user}>` }
+    : settings.email.host && !settings.email.enabled ? { tone: "warn", text: "Email is saved but switched off", sub: "Turn on “Send email through this server” below and save — until then invitations and notices are not sent (the test button works either way)." }
     : envSmtp ? { tone: "info", text: "Using SMTP settings from the server's .env file", sub: "Settings saved here take priority once you turn them on." }
     : { tone: "warn", text: "Email is not set up", sub: "Invitations aren't emailed — senders share signing links manually. Configure SMTP below." };
 
@@ -75,7 +78,12 @@ export default function EmailSettings() {
           <Button variant="ghost" onClick={() => setD({ ...settings.email, password: "" })} disabled={!dirty}>Discard</Button>
           <Button onClick={() => saveEmail()} loading={saving}>Save settings</Button>
         </>}>
-        <Toggle checked={d.enabled} onChange={(v) => set({ enabled: v })} label="Send email through this server" description="When off, SyncSign falls back to .env settings (if any) or shows links to share manually." />
+        <Toggle checked={d.enabled} onChange={async (v) => {
+          // Switching email on/off takes effect immediately — no separate Save needed
+          if (!settings.email.host && v) { set({ enabled: v }); return; }
+          setD({ ...d, enabled: v });
+          await saveEmail({ enabled: v }, v ? "Email sending is on" : "Email sending is off");
+        }} label="Send email through this server" description="Takes effect immediately. When off, SyncSign falls back to .env settings (if any) or shows links to share manually." />
 
         <Field label="Provider">
           <select className="input" value={d.provider} onChange={(e) => {

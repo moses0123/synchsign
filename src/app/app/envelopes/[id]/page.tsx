@@ -155,11 +155,11 @@ export default function EnvelopePage({ params }: { params: Promise<{ id: string 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate font-semibold">{r.name}</p>
-                      <StatusBadge status={r.status} recipient />
+                      {r.role === "cc" && env.status === "completed" ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Copy sent</span> : <StatusBadge status={r.status} recipient />}
                     </div>
                     <p className="truncate text-xs text-muted">{r.email} · {r.role === "cc" ? "copy" : r.role}</p>
                     <p className="mt-0.5 text-xs text-muted">
-                      {r.completedAt ? `${r.status === "declined" ? "Declined" : "Completed"} ${timeAgo(r.completedAt)}` : r.viewedAt ? `Viewed ${timeAgo(r.viewedAt)}` : r.sentAt ? `Sent ${timeAgo(r.sentAt)}` : r.role === "cc" ? "Receives the final copy" : "Waiting for earlier signers"}
+                      {r.completedAt ? `${r.status === "declined" ? "Declined" : "Completed"} ${timeAgo(r.completedAt)}` : r.viewedAt ? `Viewed ${timeAgo(r.viewedAt)}` : r.sentAt ? `Sent ${timeAgo(r.sentAt)}` : r.role === "cc" ? (env.status === "completed" ? "Final documents emailed" : "Receives the final copy") : "Waiting for earlier signers"}
                     </p>
                     {r.declineReason && <p className="mt-1 rounded-lg bg-rose-500/10 px-2 py-1 text-xs text-rose-600">“{r.declineReason}”</p>}
                     {env.status === "sent" && r.role !== "cc" && (r.status === "sent" || r.status === "viewed") && (

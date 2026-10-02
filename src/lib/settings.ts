@@ -88,7 +88,7 @@ export function decryptSecret(blob: string | null | undefined) {
 
 /* ── cached read ── */
 let cache: { at: number; value: AppSettings } | null = null;
-const TTL = 15_000;
+const TTL = 5_000;
 
 function merge(stored: Partial<AppSettings> | null): AppSettings {
   const s = stored ?? {};
@@ -127,7 +127,7 @@ export async function saveSettings(patch: Partial<AppSettings>, by: string) {
 /** What the browser is allowed to see (no secrets). */
 export function publicSettings(s: AppSettings) {
   const { passEnc, ...email } = s.email;
-  return { ...s, email: { ...email, hasPassword: Boolean(passEnc) } };
+  return { ...s, email: { ...email, hasPassword: Boolean(passEnc), passwordUnreadable: Boolean(passEnc) && !decryptSecret(passEnc) } };
 }
 
 /** Effective SMTP config: admin portal settings first, then .env as a fallback. */
@@ -138,6 +138,7 @@ export async function smtpConfig() {
     return {
       source: "portal" as const,
       host: e.host, port: e.port, security: e.security, user: e.user, pass: decryptSecret(e.passEnc),
+      passwordUnreadable: Boolean(e.passEnc) && !decryptSecret(e.passEnc),
       from: e.fromEmail ? `"${(e.fromName || s.branding.orgName).replace(/"/g, "")}" <${e.fromEmail}>` : undefined,
       replyTo: e.replyTo || undefined,
     };
@@ -148,7 +149,7 @@ export async function smtpConfig() {
       source: "env" as const,
       host: process.env.SMTP_HOST, port, security: (port === 465 ? "ssl" : "starttls") as EmailSettings["security"],
       user: process.env.SMTP_USER || "", pass: process.env.SMTP_PASS || "",
-      from: process.env.MAIL_FROM || undefined, replyTo: undefined,
+      from: process.env.MAIL_FROM || undefined, replyTo: undefined, passwordUnreadable: false,
     };
   }
   return null;

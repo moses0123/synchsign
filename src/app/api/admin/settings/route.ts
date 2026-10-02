@@ -41,7 +41,8 @@ export const PATCH = route(async (req: Request) => {
     const out: Record<string, unknown> = { ...e };
     if (clearPassword) out.passEnc = null;
     else if (password) out.passEnc = encryptSecret(password);
-    if (e.enabled && !e.host) throw new HttpError(400, "Enter the SMTP server host before turning email on");
+    const current = (await getSettings(true)).email;
+    if (e.enabled && !(e.host ?? current.host)) throw new HttpError(400, "Enter and save the SMTP server details before turning email on");
     patch.email = out;
   }
   const saved = await saveSettings(patch, me.email);

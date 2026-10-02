@@ -69,6 +69,13 @@ export async function sendMail(kind: MailKind, to: string, subject: string, titl
     await log({ to, subject, kind, status: "skipped", error: "Email is not configured" });
     return false;
   }
+  if (cfg.passwordUnreadable) {
+    const msg = "The saved SMTP password can't be decrypted on this server (AUTH_SECRET is different from where it was saved). Re-enter the password in Admin → Email and save.";
+    console.error(msg);
+    await log({ to, subject, kind, status: "failed", error: msg });
+    if (kind === "test") throw new Error(msg);
+    return false;
+  }
   try {
     const info = await transporterFor(cfg).sendMail({
       from: cfg.from || `"${settings.branding.orgName || "SyncSign"}" <${cfg.user || "no-reply@localhost"}>`,

@@ -45,8 +45,12 @@ export async function dispatch(env: Envelope) {
     if (r.status !== "pending") continue;
     r.status = "sent";
     r.sentAt = now;
-    await mails.invite(r.email, r.name, env.ownerName, env.title, env.message, signLink(r), r.role);
-    await logAudit(env._id, "delivered", { actor: r.name, email: r.email, details: `Invitation sent (${r.role})` });
+    // It's this person's turn: email them their personal signing link
+    const emailed = await mails.invite(r.email, r.name, env.ownerName, env.title, env.message, signLink(r), r.role);
+    await logAudit(env._id, "delivered", {
+      actor: r.name, email: r.email,
+      details: emailed ? `Signing link emailed (${r.role})` : `Their turn (${r.role}) — email NOT sent; see Admin → Email log. Share the link manually.`,
+    });
   }
   await col.updateOne({ _id: env._id }, { $set: { recipients: env.recipients, updatedAt: now } });
   return env;
