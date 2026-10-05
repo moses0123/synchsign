@@ -4,7 +4,7 @@ import { HttpError, forgetDisabled, route } from "@/lib/auth";
 import { requireAdmin } from "@/lib/admin";
 import { getDb, oid } from "@/lib/db";
 
-const schema = z.object({ role: z.enum(["admin", "user"]).optional(), disabled: z.boolean().optional(), name: z.string().trim().min(2).max(80).optional() });
+const schema = z.object({ emailVerification: z.enum(["inherit", "off", "optional", "required"]).optional(), role: z.enum(["admin", "user"]).optional(), disabled: z.boolean().optional(), name: z.string().trim().min(2).max(80).optional() });
 
 export const PATCH = route(async (req: Request, { params }: { params: Promise<{ id: string }> }) => {
   const me = await requireAdmin();

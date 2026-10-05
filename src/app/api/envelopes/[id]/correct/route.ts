@@ -28,7 +28,7 @@ export const POST = route(async (req: Request, { params }: Ctx) => {
     if (d.name && d.name !== r.name) { changes.push(`name ${r.name} → ${d.name}`); r.name = d.name; }
     if (d.email && d.email !== r.email) {
       changes.push(`email ${r.email} → ${d.email}`);
-      r.email = d.email; r.token = token();
+      r.email = d.email; r.token = token(); r.emailVerifiedAt = null;
       if (r.status !== "pending") { r.status = "pending"; r.viewedAt = null; }
     }
   }

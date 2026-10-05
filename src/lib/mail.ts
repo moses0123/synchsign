@@ -55,11 +55,11 @@ async function log(entry: { to: string; subject: string; kind: string; status: "
   try { (await getDb()).collection("mail_log").insertOne({ ...entry, at: new Date() }); } catch { /* best effort */ }
 }
 
-export type MailKind = keyof NotificationSettings | "test";
+export type MailKind = keyof NotificationSettings | "test" | "verification";
 
 export async function sendMail(kind: MailKind, to: string, subject: string, title: string, bodyHtml: string, cta?: { href: string; label: string }) {
   const settings = await getSettings();
-  if (kind !== "test" && settings.notifications[kind] === false) {
+  if (kind !== "test" && kind !== "verification" && settings.notifications[kind] === false) {
     await log({ to, subject, kind, status: "skipped", error: "Turned off in admin settings" });
     return false;
   }
@@ -117,6 +117,11 @@ export const mails = {
     sendMail("signerDone", to, `${who} signed "${title}"`, `${esc(who)} just signed`,
       `<p><strong>${esc(who)}</strong> completed their part of <strong>${esc(title)}</strong>.</p>`,
       { href: link, label: "Track progress" }),
+  verificationCode: (to: string, name: string, code: string, title: string, from: string, minutes: number) =>
+    sendMail("verification", to, `${code} is your SyncSign verification code`, "Confirm it's you",
+      `<p>Hi ${esc(name)},</p><p>Use this code to open <strong>${esc(title)}</strong> from ${esc(from)}:</p>
+      <p style="margin:22px 0;font-size:32px;font-weight:700;letter-spacing:8px;font-family:Consolas,Menlo,monospace;color:#0f172a">${code}</p>
+      <p>The code expires in ${minutes} minutes. If you didn't try to open this document, you can ignore this email — nobody can sign without this code.</p>`),
   test: (to: string, by: string) =>
     sendMail("test", to, "SyncSign test email", "Your email settings work",
       `<p>This test was sent by <strong>${esc(by)}</strong> from the SyncSign admin portal at ${new Date().toUTCString()}.</p><p>Signing invitations, reminders and completion notices will now be delivered from this address.</p>`,

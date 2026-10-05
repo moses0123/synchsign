@@ -4,13 +4,14 @@ import { getDb } from "@/lib/db";
 import { HttpError, requireUser, route, setSessionCookie } from "@/lib/auth";
 import type { User } from "@/lib/types";
 import { isAdmin } from "@/lib/admin";
+import { verificationPolicyFor } from "@/lib/verification";
 
 export const GET = route(async () => {
   const me = await requireUser();
   const db = await getDb();
   const u = await db.collection<User>("users").findOne({ _id: me.oid }, { projection: { passwordHash: 0 } });
   if (!u) throw new HttpError(401, "Account not found");
-  return NextResponse.json({ user: { ...u, _id: u._id.toString(), isAdmin: await isAdmin(me.uid, me.email) } });
+  return NextResponse.json({ user: { ...u, _id: u._id.toString(), isAdmin: await isAdmin(me.uid, me.email), emailVerification: await verificationPolicyFor(me.oid) } });
 });
 
 const img = z.string().startsWith("data:image/").max(600_000).nullable().optional();

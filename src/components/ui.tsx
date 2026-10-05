@@ -140,7 +140,7 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
     <div className={cn("relative inline-flex rounded-xl border border-line bg-surface-2 p-1", className)}>
       {options.map((o) => (
         <button key={o.value} type="button" onClick={() => onChange(o.value)}
-          className={cn("relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors", value === o.value ? "text-ink" : "text-muted hover:text-ink")}>
+          className={cn("relative z-10 flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors", value === o.value ? "text-ink" : "text-muted hover:text-ink")}>
           {value === o.value && (
             <motion.span layoutId={`seg-${options.map((x) => x.value).join("")}`} className="absolute inset-0 -z-10 rounded-lg bg-surface shadow-soft"
               transition={{ type: "spring", damping: 30, stiffness: 400 }} />

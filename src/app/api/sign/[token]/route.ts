@@ -7,17 +7,21 @@ import { notifyOwner } from "@/lib/notify";
 import { loadSigner, type TokenCtx } from "@/lib/signer";
 import type { User } from "@/lib/types";
 import { getSettings } from "@/lib/settings";
+import { maskEmail } from "@/lib/verification";
 
 export const GET = route(async (req: Request, { params }: TokenCtx) => {
   const { token } = await params;
-  const { env, r, unlocked, code } = await loadSigner(req, token, { requireCode: false });
+  const { env, r, unlocked, code, needsEmail, emailVerified } = await loadSigner(req, token, { requireAccess: false });
   const base = {
     title: env.title, ownerName: env.ownerName, ownerEmail: env.ownerEmail, status: env.status,
     recipient: { id: r.id, name: r.name, email: r.email, role: r.role, status: r.status, color: r.color },
   };
   if (!unlocked) {
     if (code) await logAudit(env._id, "code_failed", { actor: r.name, email: r.email, ip: clientIp(req) });
-    return NextResponse.json({ ...base, locked: true, wrongCode: Boolean(code) });
+    return NextResponse.json({ ...base, locked: true, lockReason: "code", wrongCode: Boolean(code) });
+  }
+  if (!emailVerified) {
+    return NextResponse.json({ ...base, recipient: { ...base.recipient, email: maskEmail(r.email) }, locked: true, lockReason: "email", maskedEmail: maskEmail(r.email) });
   }
   const canAct = env.status === "sent" && (r.status === "sent" || r.status === "viewed");
   if (canAct && r.status === "sent") {
@@ -51,6 +55,7 @@ export const GET = route(async (req: Request, { params }: TokenCtx) => {
     myFields: env.fields.filter((f) => f.recipientId === r.id),
     otherFields: env.fields.filter((f) => f.recipientId !== r.id && doneIds.has(f.recipientId) && f.value),
     saved,
+    identity: { accessCode: Boolean(r.accessCode), emailVerified: needsEmail },
     allowDecline: (await getSettings()).signing.allowDecline,
     consentText: (await getSettings()).signing.consentText,
   });

@@ -5,6 +5,7 @@ import { loadOwned, type Ctx } from "@/lib/owned";
 import { logAudit } from "@/lib/audit";
 import { mailEnabled } from "@/lib/mail";
 import { saveContacts } from "@/lib/contacts";
+import { applyPolicy, verificationPolicyFor } from "@/lib/verification";
 
 export const POST = route(async (req: Request, { params }: Ctx) => {
   const { env, col, me } = await loadOwned((await params).id);
@@ -14,6 +15,13 @@ export const POST = route(async (req: Request, { params }: Ctx) => {
   for (const r of env.recipients.filter((x) => x.role === "signer")) {
     if (!env.fields.some((f) => f.recipientId === r.id)) throw new HttpError(400, `Add at least one field for ${r.name}`);
   }
+  // Enforce the email-verification policy at send time (admin may have changed it since the draft was made)
+  const policy = await verificationPolicyFor(env.ownerId);
+  env.recipients = env.recipients.map((r) => ({ ...r, verifyEmail: applyPolicy(policy, r) }));
+  if (env.recipients.some((r) => r.verifyEmail) && !(await mailEnabled())) {
+    throw new HttpError(400, "Email verification needs email to be set up, but email sending is off. Ask your admin to turn it on, or switch verification off for these recipients.");
+  }
+  await col.updateOne({ _id: env._id }, { $set: { recipients: env.recipients } });
   const now = new Date();
   env.status = "sent";
   env.sentAt = now;

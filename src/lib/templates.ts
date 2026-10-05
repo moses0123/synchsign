@@ -18,14 +18,14 @@ export async function loadTemplate(id: string) {
 export function envelopeFromTemplate(
   t: Template, me: { oid: Template["ownerId"]; name: string; email: string },
   people: Record<string, { name: string; email: string }>, originalHash: string, title?: string,
-  defaults: { reminderDays: number | null; expiresAt: Date | null } = { reminderDays: 3, expiresAt: null },
+  defaults: { reminderDays: number | null; expiresAt: Date | null; verifyEmail?: boolean } = { reminderDays: 3, expiresAt: null },
 ): Omit<Envelope, "_id"> {
   const idMap = new Map<string, string>();
   const recipients = t.roles.map((role) => {
     const p = people[role.id];
     if (!p?.name || !p?.email) throw new HttpError(400, `Fill in a name and email for “${role.name}”`);
     const id = uid(); idMap.set(role.id, id);
-    return { id, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: role.role, order: role.order, color: role.color, status: "pending" as const, token: token(), accessCode: null };
+    return { id, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: role.role, order: role.order, color: role.color, status: "pending" as const, token: token(), accessCode: null, verifyEmail: role.role !== "cc" && Boolean(defaults.verifyEmail) };
   });
   const now = new Date();
   return {

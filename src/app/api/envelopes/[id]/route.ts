@@ -6,6 +6,7 @@ import { serialize } from "@/lib/envelope";
 import { loadOwned, type Ctx } from "@/lib/owned";
 import { token as newToken } from "@/lib/utils";
 import type { Recipient } from "@/lib/types";
+import { applyPolicy, verificationPolicyFor } from "@/lib/verification";
 
 export const GET = route(async (_req: Request, { params }: Ctx) => {
   const { env } = await loadOwned((await params).id);
@@ -20,6 +21,7 @@ const recipient = z.object({
   order: z.number().int().min(1).max(50),
   color: z.string().max(20),
   accessCode: z.string().trim().max(32).nullable().optional(),
+  verifyEmail: z.boolean().optional(),
 });
 const field = z.object({
   id: z.string().min(1).max(40),
@@ -56,8 +58,10 @@ export const PATCH = route(async (req: Request, { params }: Ctx) => {
   if (d.reminderDays !== undefined) $set.reminderDays = d.reminderDays;
   if (d.recipients) {
     const prev = new Map(env.recipients.map((r) => [r.id, r]));
+    const policy = await verificationPolicyFor(env.ownerId);
     $set.recipients = d.recipients.map<Recipient>((r) => ({
       ...r, accessCode: r.accessCode || null,
+      verifyEmail: applyPolicy(policy, r, r.verifyEmail === undefined),
       status: "pending", token: prev.get(r.id)?.token ?? newToken(),
     }));
   }

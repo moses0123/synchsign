@@ -22,6 +22,7 @@ const schema = z.object({
   signing: z.object({
     defaultReminderDays: z.number().int().min(1).max(60).nullable(), defaultExpiryDays: z.number().int().min(1).max(365).nullable(),
     maxUploadMB: z.number().int().min(1).max(50), allowDecline: z.boolean(), consentText: z.string().trim().min(10).max(1000),
+    emailVerification: z.enum(["off", "optional", "required"]), emailVerificationDefault: z.boolean(),
   }).partial().optional(),
   access: z.object({
     registration: z.enum(["open", "domains", "closed"]),

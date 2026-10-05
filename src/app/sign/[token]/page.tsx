@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowDown, Ban, Check, CheckCircle2, Clock, Download, FileSignature, KeyRound, Loader2, Lock, MoreVertical,
+  ArrowDown, Ban, Check, Mail, MailCheck, CheckCircle2, Clock, Download, FileSignature, KeyRound, Loader2, Lock, MoreVertical,
   Award, ShieldCheck, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 interface SignData {
   title: string; ownerName: string; ownerEmail: string; status: string; locked: boolean; wrongCode?: boolean;
+  lockReason?: "code" | "email"; maskedEmail?: string;
   recipient: { id: string; name: string; email: string; role: string; status: string; color: string };
   message?: string; pages?: { w: number; h: number }[]; canAct?: boolean; waitingOnOthers?: boolean; completedAvailable?: boolean; certificateAvailable?: boolean;
   recipients?: { id: string; name: string; role: string; status: string; color: string; order: number }[];
@@ -126,7 +127,7 @@ export default function SignPage({ params }: { params: Promise<{ token: string }
     e.preventDefault(); setUnlocking(true);
     codeRef.current = code.trim();
     const d = await load();
-    if (d?.locked) { codeRef.current = ""; toast.error("That code isn't right"); }
+    if (d?.locked && d.lockReason !== "email") { codeRef.current = ""; toast.error("That code isn't right"); }
     setUnlocking(false);
   }
 
@@ -142,6 +143,10 @@ export default function SignPage({ params }: { params: Promise<{ token: string }
 
   if (error) return shell(<><XCircle className="mx-auto mt-6 h-10 w-10 text-rose-500" /><h1 className="mt-3 font-display text-xl font-bold">Link unavailable</h1><p className="mt-2 text-sm text-muted">{error}</p></>);
   if (!data) return <div className="grid min-h-dvh place-items-center"><Loader2 className="h-8 w-8 animate-spin text-sky-500" /></div>;
+
+  if (data.locked && data.lockReason === "email") return shell(
+    <EmailVerify token={token} headers={headers} maskedEmail={data.maskedEmail ?? ""} ownerName={data.ownerName} title={data.title} onVerified={load} />,
+  );
 
   if (data.locked) return shell(
     <form onSubmit={unlock}>
@@ -359,5 +364,63 @@ function DeclineModal({ open, onClose, reason, setReason, onDecline }: { open: b
       <p className="mb-3 text-left text-sm text-muted">The sender will be notified and the envelope will stop. Let them know why:</p>
       <textarea className="input min-h-[100px]" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. The start date in clause 4 is wrong" maxLength={500} />
     </Modal>
+  );
+}
+
+function EmailVerify({ token, headers, maskedEmail, ownerName, title, onVerified }: {
+  token: string; headers: () => Record<string, string>; maskedEmail: string; ownerName: string; title: string; onVerified: () => Promise<unknown>;
+}) {
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [wait, setWait] = useState(0);
+  useEffect(() => { if (wait <= 0) return; const t = setTimeout(() => setWait((w) => w - 1), 1000); return () => clearTimeout(t); }, [wait]);
+
+  async function send() {
+    setBusy(true); setError(null);
+    try {
+      await api(`/api/sign/${token}/verify-email`, { method: "POST", headers: headers(), json: { action: "send" } });
+      setSent(true); setWait(45); setCode("");
+      toast.success(`Code sent to ${maskedEmail}`);
+    } catch (e) { setError((e as Error).message); }
+    setBusy(false);
+  }
+  async function verify(e: React.FormEvent) {
+    e.preventDefault();
+    if (code.replace(/\D/g, "").length !== 6) { setError("Enter the 6-digit code from the email"); return; }
+    setBusy(true); setError(null);
+    try {
+      await api(`/api/sign/${token}/verify-email`, { method: "POST", headers: headers(), json: { action: "verify", code } });
+      navigator.vibrate?.(15);
+      await onVerified();
+    } catch (err) { setError((err as Error).message); setBusy(false); }
+  }
+
+  return (
+    <div>
+      <span className="mx-auto mt-6 grid h-14 w-14 place-items-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400"><MailCheck className="h-7 w-7" /></span>
+      <h1 className="mt-4 font-display text-xl font-bold">Confirm it&apos;s you</h1>
+      <p className="mt-2 text-sm text-muted"><strong>{ownerName}</strong> sent you “{title}” and asked us to confirm your email address before you open it.</p>
+      {error && <p role="alert" className="mt-4 rounded-lg border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-left text-sm text-rose-700 dark:text-rose-300">{error}</p>}
+      {!sent ? (
+        <>
+          <p className="mt-5 rounded-lg bg-surface-2 px-3 py-2.5 text-sm">We&apos;ll email a 6-digit code to <span className="font-semibold">{maskedEmail}</span></p>
+          <Button className="mt-4 w-full" size="lg" onClick={send} loading={busy}><Mail className="h-4 w-4" />Email me a code</Button>
+        </>
+      ) : (
+        <form onSubmit={verify}>
+          <p className="mt-5 text-sm text-muted">Enter the code we sent to <span className="font-semibold text-ink">{maskedEmail}</span>. It expires in 10 minutes.</p>
+          <input autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code}
+            onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+            className="input mt-4 text-center font-mono text-2xl tracking-[0.5em]" placeholder="••••••" aria-label="6-digit code" />
+          <Button type="submit" className="mt-4 w-full" size="lg" loading={busy} disabled={code.length !== 6}>Verify and open document</Button>
+          <button type="button" onClick={send} disabled={wait > 0 || busy} className="mt-3 text-sm font-medium text-sky-700 disabled:text-muted dark:text-sky-400">
+            {wait > 0 ? `Resend code in ${wait}s` : "Didn't get it? Send a new code"}
+          </button>
+        </form>
+      )}
+      <p className="mt-6 border-t border-line pt-4 text-xs text-muted">Not you? Don&apos;t continue — only the person this was sent to can open it.</p>
+    </div>
   );
 }

@@ -15,6 +15,8 @@ export interface Recipient {
   status: RecipientStatus;
   token: string;
   accessCode?: string | null;
+  verifyEmail?: boolean;          // signer must confirm a one-time code sent to their email
+  emailVerifiedAt?: Date | null;
   sentAt?: Date | null;
   viewedAt?: Date | null;
   completedAt?: Date | null;
@@ -92,6 +94,7 @@ export interface User {
   signature?: string | null; // data URL
   initials?: string | null;  // data URL
   role?: "admin" | "user";
+  emailVerification?: "inherit" | "off" | "optional" | "required"; // admin override of the workspace policy
   disabled?: boolean;
   lastLoginAt?: Date;
   createdAt: Date;

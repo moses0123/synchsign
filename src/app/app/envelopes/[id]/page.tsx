@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, Ban, Bell, Check, CheckCircle2, Clock, Copy, Download, Eye, FileDown, Link2, MoreHorizontal,
   PenLine, Send, ShieldCheck, Trash2, UserCog, XCircle, Fingerprint, Mail, KeyRound, Files, Share2, Award,
+  MailCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, Button, Modal, Spinner, StatusBadge, api } from "@/components/ui";
@@ -19,7 +20,7 @@ interface AuditEvent { _id: string; action: string; at: string; actor?: string; 
 const EVENT_ICON: Record<string, typeof Send> = {
   created: Files, sent: Send, delivered: Mail, viewed: Eye, signed: PenLine, approved: CheckCircle2, declined: XCircle,
   completed: ShieldCheck, voided: Ban, reminded: Bell, downloaded: Download, code_verified: KeyRound, code_failed: KeyRound,
-  corrected: UserCog, expired: Clock, updated: Files,
+  corrected: UserCog, expired: Clock, updated: Files, otp_sent: Mail, otp_failed: KeyRound, email_verified: MailCheck,
 };
 
 export default function EnvelopePage({ params }: { params: Promise<{ id: string }> }) {
@@ -158,6 +159,12 @@ export default function EnvelopePage({ params }: { params: Promise<{ id: string 
                       {r.role === "cc" && env.status === "completed" ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Copy sent</span> : <StatusBadge status={r.status} recipient />}
                     </div>
                     <p className="truncate text-xs text-muted">{r.email} · {r.role === "cc" ? "copy" : r.role}</p>
+                    {(r.verifyEmail || r.accessCode) && r.role !== "cc" && (
+                      <p className="mt-1 flex flex-wrap gap-1">
+                        {r.verifyEmail && <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold", r.emailVerifiedAt ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-sky-500/10 text-sky-700 dark:text-sky-300")}><MailCheck className="h-3 w-3" />{r.emailVerifiedAt ? "Email verified" : "Email verification"}</span>}
+                        {r.accessCode && <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300"><KeyRound className="h-3 w-3" />Access code</span>}
+                      </p>
+                    )}
                     <p className="mt-0.5 text-xs text-muted">
                       {r.completedAt ? `${r.status === "declined" ? "Declined" : "Completed"} ${timeAgo(r.completedAt)}` : r.viewedAt ? `Viewed ${timeAgo(r.viewedAt)}` : r.sentAt ? `Sent ${timeAgo(r.sentAt)}` : r.role === "cc" ? (env.status === "completed" ? "Final documents emailed" : "Receives the final copy") : "Waiting for earlier signers"}
                     </p>
@@ -203,10 +210,10 @@ export default function EnvelopePage({ params }: { params: Promise<{ id: string 
                   return (
                     <motion.li key={e._id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.03 }} className="relative pb-5 last:pb-0">
                       <span className={cn("absolute -left-[37px] grid h-7 w-7 place-items-center rounded-full ring-4 ring-surface",
-                        e.action === "completed" || e.action === "signed" || e.action === "approved" ? "bg-emerald-500 text-white" : e.action === "declined" || e.action === "voided" || e.action === "code_failed" ? "bg-rose-500 text-white" : "bg-sky-500/15 text-sky-600")}>
+                        e.action === "completed" || e.action === "signed" || e.action === "approved" || e.action === "email_verified" ? "bg-emerald-500 text-white" : e.action === "declined" || e.action === "voided" || e.action === "code_failed" || e.action === "otp_failed" ? "bg-rose-500 text-white" : "bg-sky-500/15 text-sky-600")}>
                         <I className="h-3.5 w-3.5" />
                       </span>
-                      <p className="text-sm"><span className="font-semibold">{e.actor ?? "SyncSign"}</span> <span className="text-muted">{e.action.replace("_", " ")}</span></p>
+                      <p className="text-sm"><span className="font-semibold">{e.actor ?? "SyncSign"}</span> <span className="text-muted">{({ otp_sent: "was sent a verification code", otp_failed: "entered a wrong verification code", email_verified: "verified their email", code_verified: "entered the access code", code_failed: "entered a wrong access code" } as Record<string, string>)[e.action] ?? e.action.replace("_", " ")}</span></p>
                       {e.details && <p className="text-xs text-muted">{e.details}</p>}
                       <p className="mt-0.5 text-[11px] text-muted">{fmtDate(e.at, true)}{e.ip && e.ip !== "unknown" ? ` · IP ${e.ip}` : ""}</p>
                     </motion.li>

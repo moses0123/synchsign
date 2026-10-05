@@ -46,6 +46,22 @@ export default function Policies() {
         </Field>
       </Section>
 
+      <Section title="Identity verification" body="Make signers prove they own the email address the document was sent to. They get a 6-digit code by email and must enter it before the document opens, so a forwarded link is useless to anyone else."
+        footer={<Button onClick={() => save({ signing: { emailVerification: sg.emailVerification, emailVerificationDefault: sg.emailVerificationDefault } }, "Verification settings saved")} loading={saving}>Save verification settings</Button>}>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {([["off", "Off", "Not available to senders"], ["optional", "Senders choose", "A switch per recipient when adding people"], ["required", "Always required", "Every signer and approver must verify"]] as const).map(([v, t, d]) => (
+            <button key={v} type="button" onClick={() => setSg({ ...sg, emailVerification: v })}
+              className={cn("rounded-lg border p-3 text-left transition-colors", sg.emailVerification === v ? "border-sky-500 bg-sky-500/5 ring-1 ring-sky-500" : "border-line hover:border-sky-300")}>
+              <p className="text-sm font-semibold">{t}</p><p className="text-xs text-muted">{d}</p>
+            </button>
+          ))}
+        </div>
+        {sg.emailVerification === "optional" && (
+          <Toggle checked={sg.emailVerificationDefault} onChange={(v) => setSg({ ...sg, emailVerificationDefault: v })} label="Switched on by default for new recipients" description="Senders can still turn it off for a recipient." />
+        )}
+        <p className="text-xs text-muted">Needs email delivery to be set up. You can give individual users a different setting in <a href="/admin/users" className="font-medium text-sky-700 dark:text-sky-400">Users</a>.</p>
+      </Section>
+
       <Section title="Who can create an account" body="Signers never need an account — this only controls who can send documents."
         footer={<Button onClick={() => save({ access: ac }, "Access settings saved")} loading={saving}>Save access settings</Button>}>
         <div className="grid gap-2 sm:grid-cols-3">

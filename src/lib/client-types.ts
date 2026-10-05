@@ -2,7 +2,7 @@ import type { Field, PageSize, RecipientRole, RecipientStatus, EnvelopeStatus } 
 
 export interface ClientRecipient {
   id: string; name: string; email: string; role: RecipientRole; order: number; color: string;
-  status: RecipientStatus; token: string; accessCode?: string | null; link?: string;
+  status: RecipientStatus; token: string; accessCode?: string | null; link?: string; verifyEmail?: boolean; emailVerifiedAt?: string | null;
   sentAt?: string | null; viewedAt?: string | null; completedAt?: string | null; declineReason?: string | null;
 }
 export interface ClientEnvelope {

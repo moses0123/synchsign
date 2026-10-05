@@ -23,6 +23,7 @@ export const GET = route(async (req: Request) => {
     users: users.map((u) => ({
       _id: u._id.toString(), name: u.name, email: u.email, company: u.company ?? "", role: admins.includes(u.email) ? "admin" : u.role ?? "user",
       envAdmin: admins.includes(u.email), disabled: Boolean(u.disabled), createdAt: u.createdAt, lastLoginAt: u.lastLoginAt ?? null,
+      emailVerification: u.emailVerification ?? "inherit",
       envelopes: map.get(u._id.toString())?.n ?? 0, completed: map.get(u._id.toString())?.done ?? 0,
     })),
   });

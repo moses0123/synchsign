@@ -6,7 +6,8 @@ import { Avatar, Button, Modal, Skeleton, api } from "@/components/ui";
 import { Field, PageHeader, Toggle } from "@/components/admin/kit";
 import { cn, fmtDate, timeAgo } from "@/lib/utils";
 
-interface U { _id: string; name: string; email: string; company: string; role: "admin" | "user"; envAdmin: boolean; disabled: boolean; createdAt: string; lastLoginAt: string | null; envelopes: number; completed: number }
+type VMode = "inherit" | "off" | "optional" | "required";
+interface U { emailVerification: VMode; _id: string; name: string; email: string; company: string; role: "admin" | "user"; envAdmin: boolean; disabled: boolean; createdAt: string; lastLoginAt: string | null; envelopes: number; completed: number }
 
 export default function UsersAdmin() {
   const [q, setQ] = useState("");
@@ -18,7 +19,7 @@ export default function UsersAdmin() {
   useEffect(() => { const t = setTimeout(() => load(q), q ? 250 : 0); return () => clearTimeout(t); }, [q]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api<{ user: { _id: string } }>("/api/admin/auth/me").then((d) => setMe(d.user._id)).catch(() => {}); }, []);
 
-  async function patch(u: U, p: Partial<Pick<U, "role" | "disabled">>, msg: string) {
+  async function patch(u: U, p: Partial<Pick<U, "role" | "disabled" | "emailVerification">>, msg: string) {
     try { await api(`/api/admin/users/${u._id}`, { method: "PATCH", json: p }); toast.success(msg); load(); } catch (e) { toast.error((e as Error).message); }
   }
   async function reset(u: U) {
@@ -35,15 +36,15 @@ export default function UsersAdmin() {
         </div>} />
 
       <div className="card overflow-hidden">
-        <div className="hidden grid-cols-[1.6fr_110px_120px_110px_150px] gap-4 border-b border-line bg-surface-2 px-4 py-2.5 text-xs font-medium text-muted md:grid">
-          <span>User</span><span>Role</span><span>Envelopes</span><span>Last sign-in</span><span className="text-right">Actions</span>
+        <div className="hidden grid-cols-[1.5fr_100px_150px_110px_100px_140px] gap-4 border-b border-line bg-surface-2 px-4 py-2.5 text-xs font-medium text-muted md:grid">
+          <span>User</span><span>Role</span><span>Email verification</span><span>Envelopes</span><span>Last sign-in</span><span className="text-right">Actions</span>
         </div>
         {!items && <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-12" />)}</div>}
         {items?.length === 0 && <p className="p-8 text-center text-sm text-muted">No users match.</p>}
         {items?.map((u) => {
           const self = u._id === me;
           return (
-            <div key={u._id} className={cn("grid grid-cols-1 gap-3 border-b border-line px-4 py-3 last:border-0 md:grid-cols-[1.6fr_110px_120px_110px_150px] md:items-center md:gap-4", u.disabled && "opacity-60")}>
+            <div key={u._id} className={cn("grid grid-cols-1 gap-3 border-b border-line px-4 py-3 last:border-0 md:grid-cols-[1.5fr_100px_150px_110px_100px_140px] md:items-center md:gap-4", u.disabled && "opacity-60")}>
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={u.name} size={34} />
                 <div className="min-w-0">
@@ -55,6 +56,12 @@ export default function UsersAdmin() {
                 <select className="input !w-auto !py-1.5 !text-xs" value={u.role} disabled={self || u.envAdmin} title={u.envAdmin ? "Set by ADMIN_EMAILS" : undefined}
                   onChange={(e) => patch(u, { role: e.target.value as U["role"] }, e.target.value === "admin" ? `${u.name} is now an admin` : `${u.name} is now a regular user`)}>
                   <option value="user">User</option><option value="admin">Admin</option>
+                </select>
+              </div>
+              <div>
+                <select className="input !w-auto !py-1.5 !text-xs" value={u.emailVerification} title="Overrides the workspace setting for envelopes this user sends"
+                  onChange={(e) => patch(u, { emailVerification: e.target.value as VMode }, `Email verification for ${u.name}: ${({ inherit: "workspace default", off: "off", optional: "sender chooses", required: "always required" } as const)[e.target.value as VMode]}`)}>
+                  <option value="inherit">Workspace default</option><option value="off">Off</option><option value="optional">Sender chooses</option><option value="required">Always required</option>
                 </select>
               </div>
               <span className="text-sm text-muted"><span className="md:hidden">Envelopes: </span>{u.envelopes} <span className="text-xs">({u.completed} done)</span></span>

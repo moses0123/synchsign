@@ -145,7 +145,7 @@ export async function buildCertificatePdf(env: Envelope, audit: AuditRow[], appU
     y -= 14;
     text(`Sent: ${r.sentAt ? new Date(r.sentAt).toUTCString() : "—"}    Viewed: ${r.viewedAt ? new Date(r.viewedAt).toUTCString() : "—"}`, { x: M + 12, size: 7.5, c: mut });
     y -= 11;
-    text(`Completed: ${r.completedAt ? new Date(r.completedAt).toUTCString() : "—"}    IP: ${r.ip ?? "—"}    Access code: ${r.accessCode ? "required" : "none"}`, { x: M + 12, size: 7.5, c: mut });
+    text(`Completed: ${r.completedAt ? new Date(r.completedAt).toUTCString() : "—"}    IP: ${r.ip ?? "—"}    Identity: ${[r.verifyEmail ? (r.emailVerifiedAt ? `email code verified ${new Date(r.emailVerifiedAt).toUTCString()}` : "email code") : "", r.accessCode ? "access code" : ""].filter(Boolean).join(" + ") || "signing link only"}`, { x: M + 12, size: 7.5, c: mut });
     y -= 30;
   }
 

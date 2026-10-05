@@ -7,6 +7,7 @@ import { sha256 } from "@/lib/pdf";
 import { logAudit } from "@/lib/audit";
 import { saveContacts } from "@/lib/contacts";
 import { envelopeDefaults } from "@/lib/settings";
+import { verificationPolicyFor } from "@/lib/verification";
 import type { Envelope } from "@/lib/types";
 
 /**
@@ -21,7 +22,8 @@ export const POST = route(async (req: Request, { params }: { params: Promise<{ i
   const first = t.roles.slice().sort((a, b) => a.order - b.order)[0]!;
   const hash = sha256(await readFile(t.fileId));
   const envCol = await envelopes();
-  const defaults = await envelopeDefaults();
+  const vp = await verificationPolicyFor(me.oid);
+  const defaults = { ...(await envelopeDefaults()), verifyEmail: vp.mode !== "off" && vp.defaultOn };
   const ids: string[] = [];
   for (const row of rows) {
     const doc = envelopeFromTemplate(t, me, { ...fixed, [first.id]: row }, hash, `${t.name} – ${row.name}`, defaults);

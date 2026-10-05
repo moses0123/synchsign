@@ -15,7 +15,7 @@ export const POST = route(async (_req: Request, { params }: Ctx) => {
   void _omit;
   const copy: Omit<Envelope, "_id"> & { finalizing: boolean } = {
     ...rest, title: `${env.title} (copy)`, status: "draft", fileId, completedFileId: null, completedHash: null,
-    recipients: env.recipients.map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, order: r.order, color: r.color, accessCode: r.accessCode, status: "pending", token: token() })),
+    recipients: env.recipients.map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, order: r.order, color: r.color, accessCode: r.accessCode, verifyEmail: r.verifyEmail, status: "pending", token: token() })),
     fields: env.fields.map((f) => ({ ...f, value: null })),
     createdAt: now, updatedAt: now, sentAt: null, finalizing: false, completedAt: null, voidReason: null, expiresAt: null,
   };

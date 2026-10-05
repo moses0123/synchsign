@@ -8,6 +8,7 @@ import { sha256 } from "@/lib/pdf";
 import { logAudit } from "@/lib/audit";
 import { saveContacts } from "@/lib/contacts";
 import { envelopeDefaults } from "@/lib/settings";
+import { applyPolicy, verificationPolicyFor } from "@/lib/verification";
 import type { Envelope, Field, Recipient } from "@/lib/types";
 import { token, uid } from "@/lib/utils";
 
@@ -22,12 +23,13 @@ export const POST = route(async (req: Request, { params }: { params: Promise<{ i
   const envTitle = (title || d.title).slice(0, 140);
   const { buffer, pages, fields: placed } = await renderDocument(d.content, values, { title: envTitle });
 
+  const vp = await verificationPolicyFor(me.oid);
   const idMap = new Map<string, string>();
   const recipients: Recipient[] = d.content.roles.map((r) => {
     const p = people[r.id];
     if (!p?.name?.trim() || !/\S+@\S+\.\S+/.test(p.email ?? "")) throw new HttpError(400, `Add a name and email for “${r.name}”`);
     const rid = uid(); idMap.set(r.id, rid);
-    return { id: rid, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: r.role, order: r.order, color: r.color, status: "pending", token: token(), accessCode: null };
+    return { id: rid, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: r.role, order: r.order, color: r.color, status: "pending", token: token(), accessCode: null, verifyEmail: applyPolicy(vp, r, true) };
   });
   const fields: Field[] = placed.filter((f) => idMap.has(f.roleId) && d.content.roles.find((r) => r.id === f.roleId)?.role !== "cc")
     .map((f) => ({ id: uid(), recipientId: idMap.get(f.roleId)!, type: f.type, page: f.page, x: f.x, y: f.y, w: f.w, h: f.h, required: true }));

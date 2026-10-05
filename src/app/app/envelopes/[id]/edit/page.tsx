@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, KeyRound, LayoutTemplate, Loader2, MousePointer2,
-  Plus, Send, Trash2, UserPlus, Users, X, CloudCheck,
+  Plus, Send, Trash2, UserPlus, Users, X, CloudCheck, MailCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, Button, Modal, Segmented, Spinner, api } from "@/components/ui";
@@ -17,6 +17,7 @@ import { FIELD_META, FIELD_ORDER } from "@/lib/fields";
 import { cn, uid } from "@/lib/utils";
 
 type Step = "recipients" | "fields" | "review";
+interface Me { name: string; email: string; emailVerification?: { mode: "off" | "optional" | "required"; defaultOn: boolean } }
 const STEPS: { v: Step; l: string }[] = [{ v: "recipients", l: "Recipients" }, { v: "fields", l: "Fields" }, { v: "review", l: "Review & send" }];
 
 export default function EditEnvelope({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +25,7 @@ export default function EditEnvelope({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const search = useSearchParams();
   const [env, setEnv] = useState<ClientEnvelope | null>(null);
-  const [me, setMe] = useState<{ name: string; email: string } | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [step, setStep] = useState<Step>((search.get("step") as Step) || "recipients");
   const [recipients, setRecipients] = useState<ClientRecipient[]>([]);
   const [fields, setFields] = useState<Field[]>([]);
@@ -39,13 +40,13 @@ export default function EditEnvelope({ params }: { params: Promise<{ id: string 
       setMeta({ title: e.title, message: e.message, signingOrder: e.signingOrder, expiresAt: e.expiresAt ? e.expiresAt.slice(0, 10) : "", reminderDays: e.reminderDays ?? null });
       setTimeout(() => { loaded.current = true; }, 50);
     }).catch((err) => { toast.error(err.message); router.replace("/app/documents"); });
-    api<{ user: { name: string; email: string } }>("/api/me").then((d) => setMe(d.user)).catch(() => {});
+    api<{ user: Me }>("/api/me").then((d) => setMe(d.user)).catch(() => {});
   }, [id, router]);
 
   const payload = useMemo(() => ({
     ...meta,
     expiresAt: meta.expiresAt ? new Date(meta.expiresAt + "T23:59:59").toISOString() : null,
-    recipients: recipients.filter((r) => r.name.trim() && /\S+@\S+\.\S+/.test(r.email)).map(({ id, name, email, role, order, color, accessCode }) => ({ id, name, email, role, order, color, accessCode: accessCode || null })),
+    recipients: recipients.filter((r) => r.name.trim() && /\S+@\S+\.\S+/.test(r.email)).map(({ id, name, email, role, order, color, accessCode, verifyEmail }) => ({ id, name, email, role, order, color, accessCode: accessCode || null, verifyEmail: Boolean(verifyEmail) })),
     fields,
   }), [meta, recipients, fields]);
 
@@ -121,14 +122,17 @@ export default function EditEnvelope({ params }: { params: Promise<{ id: string 
 function RecipientsStep({ recipients, setRecipients, order, setOrder, me, onNext }: {
   recipients: ClientRecipient[]; setRecipients: (r: ClientRecipient[]) => void;
   order: "sequential" | "parallel"; setOrder: (v: "sequential" | "parallel") => void;
-  me: { name: string; email: string } | null; onNext: () => void;
+  me: Me | null; onNext: () => void;
 }) {
   const meta = { signingOrder: order };
+  const vMode = me?.emailVerification?.mode ?? "off";
+  const vDefault = Boolean(me?.emailVerification?.defaultOn);
   const add = (p?: { name: string; email: string }) => {
     const order = recipients.length ? Math.max(...recipients.map((r) => r.order)) + 1 : 1;
     setRecipients([...recipients, {
       id: uid(), name: p?.name ?? "", email: p?.email ?? "", role: "signer", order,
       color: RECIPIENT_COLORS[recipients.length % RECIPIENT_COLORS.length]!, status: "pending", token: "", accessCode: null,
+      verifyEmail: vMode === "required" || (vMode === "optional" && vDefault),
     }]);
   };
   const update = (id: string, patch: Partial<ClientRecipient>) => setRecipients(recipients.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -192,6 +196,17 @@ function RecipientsStep({ recipients, setRecipients, order, setOrder, me, onNext
                       className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition", r.accessCode !== null && r.accessCode !== undefined ? "bg-amber-500/10 text-amber-700 dark:text-amber-300" : "text-muted hover:bg-surface-2")}>
                       <KeyRound className="h-3.5 w-3.5" />Access code
                     </button>
+                    {r.role !== "cc" && vMode === "optional" && (
+                      <button onClick={() => update(r.id, { verifyEmail: !r.verifyEmail })} title="They must enter a one-time code sent to this email address before they can open the document"
+                        className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition", r.verifyEmail ? "bg-sky-500/10 text-sky-700 dark:text-sky-300" : "text-muted hover:bg-surface-2")}>
+                        <MailCheck className="h-3.5 w-3.5" />Email verification{r.verifyEmail ? " on" : ""}
+                      </button>
+                    )}
+                    {r.role !== "cc" && vMode === "required" && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/10 px-2.5 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300" title="Your administrator requires this for every recipient">
+                        <MailCheck className="h-3.5 w-3.5" />Email verification required
+                      </span>
+                    )}
                     <div className="flex items-center gap-1">
                       {RECIPIENT_COLORS.slice(0, 6).map((c) => (
                         <button key={c} onClick={() => update(r.id, { color: c })} className={cn("h-5 w-5 rounded-full transition", r.color === c && "ring-2 ring-offset-2 ring-offset-surface")} style={{ background: c, ["--tw-ring-color" as string]: c }} aria-label="Colour" />
@@ -570,6 +585,7 @@ function ReviewStep({ env, recipients, fields, meta, setMeta, self, flush, onBac
             <span className="text-right text-xs text-muted">
               {r.role === "cc" ? "Gets a copy" : r.role === "approver" ? "Approves" : `${fields.filter((f) => f.recipientId === r.id).length} fields`}
               {r.accessCode ? <span className="block text-amber-600">Access code</span> : null}
+              {r.verifyEmail && r.role !== "cc" ? <span className="block text-sky-700 dark:text-sky-400">Email verification</span> : null}
             </span>
           </motion.div>
         ))}

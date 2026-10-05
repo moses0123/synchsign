@@ -27,7 +27,13 @@ export interface SigningSettings {
   maxUploadMB: number;
   allowDecline: boolean;
   consentText: string;
+  /** off = not available · optional = senders choose per recipient · required = always on */
+  emailVerification: VerificationMode;
+  /** When senders choose: is verification ticked by default for new recipients? */
+  emailVerificationDefault: boolean;
 }
+
+export type VerificationMode = "off" | "optional" | "required";
 
 export interface AccessSettings {
   registration: "open" | "domains" | "closed";
@@ -56,6 +62,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notifications: { invite: true, reminder: true, signerDone: true, completed: true, declined: true, voided: true },
   signing: {
     defaultReminderDays: 3, defaultExpiryDays: null, maxUploadMB: 20, allowDecline: true,
+    emailVerification: "optional", emailVerificationDefault: false,
     consentText: "I agree to use electronic records and signatures, and I confirm I am the person named above.",
   },
   access: { registration: "open", allowedDomains: [] },
